@@ -1,0 +1,9 @@
+{
+    "path" : "~/hw_asset_allocation/AA_hw",
+    "sortOrder" : [
+        {
+            "ascending" : true,
+            "columnIndex" : 2
+        }
+    ]
+}
