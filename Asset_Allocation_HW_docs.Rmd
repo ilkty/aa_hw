@@ -68,11 +68,13 @@ In all of R code chunks above the `echo = FALSE` attribute is used. This is to p
 library(TTR)
 prices_day_equity <- readRDS("equity_compact_daily.RDS")
 
-sliderInput()
-
+#sliderInput()
+start_date <- "2019-10-01"
+end_date <- "2019-12-31"
 
 # start_date랑 end_date를 input으로 받아야지
   time_range <- paste(start_date, "::", end_date, sep = "")
+  print(time_range)
   prices_day_equity <- prices_day_equity[time_range]
   
     rsi <- RSI(prices_day_equity$`MSCI ACWI`, n = 5)
@@ -87,42 +89,42 @@ sliderInput()
 
 다음 예제
 
-```{r, echo=FALSE}
+```{r, echo=TRUE, warning=FALSE}
 library(dplyr)
 library(PerformanceAnalytics)
 library(ggcorrplot)
 library(DT)
 library(lubridate)
+library(shiny)
+library(reshape2)
+
+prices_day_equity <- readRDS("equity_compact_daily.RDS")
+acwi <- fortify(prices_day_equity$`MSCI ACWI`)
+#load("resource_day_sum")
 
 ui <- fluidPage(
-  mainPanel(
-    
-        sliderInput("range",
-                    "Dates:",
-                    min = as.Date('2001-06-18'),
-                    max = Sys.Date(),
-                    value = c(Sys.Date() - years(3), Sys.Date()),
-                    step = 1,
-                    timeFormat="%Y-%m-%d",
-                    width = '100%'),
-       
-    
-  )
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput(inputId = "trajectory", 
+                  label = "Date Range:",
+                  min = as.POSIXct("2008-01-02","%Y-%m-%d"),
+                  max = as.POSIXct("2019-12-31"," %Y-%m-%d"),
+                  value = c(as.POSIXct("2010-02-01"), as.POSIXct("2016-03-21")), 
+                  timeFormat="%Y-%m-%d", step = 1)),
+    mainPanel(plotOutput(outputId = "lines", height = "10vh")))
 )
   
-  server <- function(input, output) {
+server <- function(input, output) {
     
-  cross_assets <- readRDS("cross_assets.RDS") %>% na.omit
-  cross_assets_m <- to.monthly(cross_assets, indexAt = "lastOf", OHLC = FALSE)
+ output$lines <- renderPlot({
+   acwi %>%
+     filter(date >= input$trajectory[1] & date <= input$trajectory[2]) %>%
+     ggplot(aes(date, value, group = variable))
+    })
   
-    corr <- round(cor(cross_assets_m),3)
-    ggcorrplot(corr, p.mat = cor_pmat(cross_assets_m),
-           hc.order = FALSE, type = "lower",
-           color = c("#00AFBB", "white", "#FC4E07"),
-           outline.col = "white", lab = TRUE)
   }
   
-
+shinyApp(ui = ui, server = server)
   
 
 ```
