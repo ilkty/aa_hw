@@ -1,6 +1,6 @@
 ## app.R ##
-#Packages <- c("shiny", "shinydashboard","reshape2","ggplot2","PerformanceAnalytics","corrplot")
-#lapply(Packages, require, character.only = TRUE)
+#Packages <- c("shiny", "shinydashboard","reshape2","ggplot2","PerformanceAnalytics","corrplot","rsconnect","TTR","dplyr","curl")
+#lapply(Packages, install.packages, character.only = TRUE)
 
 require(shiny)
 require(dplyr)
@@ -10,7 +10,8 @@ require(shinydashboard)
 require(PerformanceAnalytics)
 require(corrplot)
 require(TTR)
-require(dplyr)
+require(rsconnect)
+require(curl)
 
 ui <- dashboardPage(
   dashboardHeader(title = "Asset Allocation"),
@@ -194,7 +195,7 @@ server <- function(input, output) {
       theme(legend.position = '') +
       xlab('Volatility') +
       ylab('Return')
-    
+  
     
   })
   
@@ -269,7 +270,7 @@ server <- function(input, output) {
     
   })
   
-  output$plot09 <- renderPlot({
+    output$plot09 <- renderPlot({
 
     rsi <- RSI(prices_day_equity$`MSCI ACWI`, n = 5)    
     plot(rsi, main = "RSI 5 days", xlab = "time", ylab = "RSI: 5days")
@@ -281,3 +282,4 @@ server <- function(input, output) {
 
 
 shinyApp(ui, server)
+

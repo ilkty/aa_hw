@@ -5,8 +5,8 @@ account: sseo64
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2393330
-bundleId: 3217279
+bundleId: 3226611
 url: https://sseo64.shinyapps.io/AA_hw/
-when: 1591081714.03133
+when: 1591246576.45607
 asMultiple: FALSE
 asStatic: FALSE
