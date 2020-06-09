@@ -1,0 +1,129 @@
+---
+title: "Asset_Allocation_HW_docs"
+author: "sseo64"
+date: '2020 6 4 '
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+
+To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
+
+## Inputs and Outputs
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+
+```{r eruptions, echo=FALSE}
+inputPanel(
+  selectInput("n_breaks", label = "Number of bins:",
+              choices = c(10, 20, 35, 50), selected = 20),
+  
+  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+              min = 0.2, max = 2, value = 1, step = 0.2)
+  
+  
+)
+
+renderPlot({
+  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
+       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+  
+  
+  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
+  lines(dens, col = "blue")
+})
+
+
+
+```
+
+## Embedded Application
+
+It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
+
+```{r tabsets, echo=FALSE}
+shinyAppDir(
+  system.file("examples/06_tabsets", package = "shiny"),
+  options = list(
+    width = "100%", height = 550
+  )
+)
+```
+
+Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
+
+You can also use the `shinyApp` function to define an application inline rather then in an external directory.
+
+In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
+
+## Relative Strenth Index
+- 5days
+
+```{r, echo=FALSE}
+library(TTR)
+prices_day_equity <- readRDS("equity_compact_daily.RDS")
+
+sliderInput()
+
+
+# start_date랑 end_date를 input으로 받아야지
+  time_range <- paste(start_date, "::", end_date, sep = "")
+  prices_day_equity <- prices_day_equity[time_range]
+  
+    rsi <- RSI(prices_day_equity$`MSCI ACWI`, n = 5)
+    par(mfrow = c(2, 2))
+    plot(rsi, main = "RSI 1 days", xlab = "time", ylab = "RSI: 5days")
+    plot(rsi, main = "RSI 2 days", xlab = "time", ylab = "RSI: 5days")
+    plot(rsi, main = "RSI 3 days", xlab = "time", ylab = "RSI: 5days")
+    plot(rsi, main = "RSI 4 days", xlab = "time", ylab = "RSI: 5days")
+```
+
+## Example 001
+
+다음 예제
+
+```{r, echo=FALSE}
+library(dplyr)
+library(PerformanceAnalytics)
+library(ggcorrplot)
+library(DT)
+library(lubridate)
+
+ui <- fluidPage(
+  mainPanel(
+    
+        sliderInput("range",
+                    "Dates:",
+                    min = as.Date('2001-06-18'),
+                    max = Sys.Date(),
+                    value = c(Sys.Date() - years(3), Sys.Date()),
+                    step = 1,
+                    timeFormat="%Y-%m-%d",
+                    width = '100%'),
+       
+    
+  )
+)
+  
+  server <- function(input, output) {
+    
+  cross_assets <- readRDS("cross_assets.RDS") %>% na.omit
+  cross_assets_m <- to.monthly(cross_assets, indexAt = "lastOf", OHLC = FALSE)
+  
+    corr <- round(cor(cross_assets_m),3)
+    ggcorrplot(corr, p.mat = cor_pmat(cross_assets_m),
+           hc.order = FALSE, type = "lower",
+           color = c("#00AFBB", "white", "#FC4E07"),
+           outline.col = "white", lab = TRUE)
+  }
+  
+
+  
+
+```
+
