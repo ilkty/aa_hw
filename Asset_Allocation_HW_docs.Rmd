@@ -6,126 +6,112 @@ output: html_document
 runtime: shiny
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
-This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+## Cross Asset(USD투자가정)
+```{r, echo=FALSE, warning=FALSE}
+library(TTR)
+library(xts)
+library(PerformanceAnalytics)
+library(ggcorrplot)
+library(dplyr)
 
-To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
 
-## Inputs and Outputs
 
-You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+cross_A <- readRDS("cross_assets.RDS")
+cross_A <- to.monthly(cross_A,indexAt = "lastOf", OHLC = FALSE)
+cross_A <- Return.calculate(cross_A, method = "log") %>% na.omit
 
-```{r eruptions, echo=FALSE}
-inputPanel(
-  selectInput("n_breaks", label = "Number of bins:",
-              choices = c(10, 20, 35, 50), selected = 20),
-  
-  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
-              min = 0.2, max = 2, value = 1, step = 0.2)
-  
-  
-)
-
-renderPlot({
-  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
-       xlab = "Duration (minutes)", main = "Geyser eruption duration")
-  
-  
-  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
-  lines(dens, col = "blue")
-})
+ggcorrplot(cor(cross_A),hc.order = TRUE, type = "lower", lab = TRUE, digits = 2 )
+ 
 
 
 
 ```
 
-## Embedded Application
 
-It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
-
-```{r tabsets, echo=FALSE}
-shinyAppDir(
-  system.file("examples/06_tabsets", package = "shiny"),
-  options = list(
-    width = "100%", height = 550
-  )
-)
-```
-
-Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
-
-You can also use the `shinyApp` function to define an application inline rather then in an external directory.
-
-In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
 
 ## Relative Strenth Index
-- 5days
+- ACWI, S&P500, KOSPI 
 
 ```{r, echo=FALSE}
 library(TTR)
 prices_day_equity <- readRDS("equity_compact_daily.RDS")
 
 #sliderInput()
-start_date <- "2019-10-01"
-end_date <- "2019-12-31"
+start_date <- "2020-01-01"
+end_date <- "2020-05-27"
 
 # start_date랑 end_date를 input으로 받아야지
   time_range <- paste(start_date, "::", end_date, sep = "")
-  print(time_range)
+  #print(time_range)
   prices_day_equity <- prices_day_equity[time_range]
   
-    rsi <- RSI(prices_day_equity$`MSCI ACWI`, n = 5)
-    par(mfrow = c(2, 2))
-    plot(rsi, main = "RSI 1 days", xlab = "time", ylab = "RSI: 5days")
-    plot(rsi, main = "RSI 2 days", xlab = "time", ylab = "RSI: 5days")
-    plot(rsi, main = "RSI 3 days", xlab = "time", ylab = "RSI: 5days")
-    plot(rsi, main = "RSI 4 days", xlab = "time", ylab = "RSI: 5days")
+    rsi5 <- RSI(prices_day_equity$`MSCI ACWI`, n = 5)
+    rsi10 <- RSI(prices_day_equity$`MSCI ACWI`, n = 10)
+    rsi15 <- RSI(prices_day_equity$`MSCI ACWI`, n = 15)
+    rsi20 <- RSI(prices_day_equity$`MSCI ACWI`, n = 20)
+    par(mfrow = c(4, 1))
+    plot(rsi5, main = "RSI 5 days", xlab = "time", ylab = "RSI: 5days")
+    plot(rsi10, main = "RSI 10 days", xlab = "time", ylab = "RSI: 10days")
+    plot(rsi15, main = "RSI 15 days", xlab = "time", ylab = "RSI: 15days")
+    plot(rsi20, main = "RSI 20 days", xlab = "time", ylab = "RSI: 20days")
 ```
 
 ## Example 001
 
 다음 예제
 
-```{r, echo=TRUE, warning=FALSE}
-library(dplyr)
-library(PerformanceAnalytics)
-library(ggcorrplot)
-library(DT)
-library(lubridate)
+```{r, echo=FALSE}
 library(shiny)
-library(reshape2)
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
 
-prices_day_equity <- readRDS("equity_compact_daily.RDS")
-acwi <- fortify(prices_day_equity$`MSCI ACWI`)
-#load("resource_day_sum")
+equity_compact <- read_excel("ac_assets.xlsx", sheet = "equity_compact", col_names = FALSE, skip = 14, col_types = c("date", rep("numeric",8)))
 
-ui <- fluidPage(
-  sidebarLayout(
-    sidebarPanel(
-      sliderInput(inputId = "trajectory", 
-                  label = "Date Range:",
-                  min = as.POSIXct("2008-01-02","%Y-%m-%d"),
-                  max = as.POSIXct("2019-12-31"," %Y-%m-%d"),
-                  value = c(as.POSIXct("2010-02-01"), as.POSIXct("2016-03-21")), 
-                  timeFormat="%Y-%m-%d", step = 1)),
-    mainPanel(plotOutput(outputId = "lines", height = "10vh")))
-)
+# prices_day_equity <- readRDS("equity_compact_daily.RDS")
+
+equity_compact$Date <- as.Date(equity_compact$...1, format = "%d/%m/%Y")
+
+# Define UI for application
+ui <- fluidPage(theme = "bootstrap.css",
   
-server <- function(input, output) {
+  # Application title
+  #titlePanel("Stock Financials Trend"),
+  
+  # Sidebar with slider input to select date range
+  sidebarLayout(position = "left",
     
- output$lines <- renderPlot({
-   acwi %>%
-     filter(date >= input$trajectory[1] & date <= input$trajectory[2]) %>%
-     ggplot(aes(date, value, group = variable))
-    })
+    sidebarPanel(
+            dateRangeInput('days', 'Select a date range:', 
+                start = Sys.Date() - 365,
+                end = Sys.Date(), 
+                max = Sys.Date())),
+    
+     mainPanel(
+      # Show a plot of the trend
+      plotOutput("plot01")
+      
+    )
+    
+    )
+)
+
+server <- function(input, output) {
   
-  }
+  filtered_df <- reactive({
+    equity_compact %>%
+      filter(between(Date, input$days[1], input$days[2]))
+  })
   
+  output$plot01 <- renderPlot({
+    ggplot(filtered_df(), aes_string(x = "Date", y = "...3")) + geom_line() + geom_point() + ggtitle("ACWI plot")
+  })    
+}
+
+# Run the application 
 shinyApp(ui = ui, server = server)
-  
 
 ```
 
