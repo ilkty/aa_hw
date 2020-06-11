@@ -15,14 +15,12 @@ library(PerformanceAnalytics)
 library(ggcorrplot)
 library(dplyr)
 
-
-
 cross_A <- readRDS("cross_assets.RDS")
 cross_A <- to.monthly(cross_A,indexAt = "lastOf", OHLC = FALSE)
 cross_A <- Return.calculate(cross_A, method = "log") %>% na.omit
 
-ggcorrplot(cor(cross_A),hc.order = TRUE, type = "lower", lab = TRUE, digits = 2 )
- 
+ggcorrplot(cor(cross_A),hc.order = TRUE, type = "upper", lab = TRUE, digits = 2)
+
 
 
 
@@ -34,48 +32,52 @@ ggcorrplot(cor(cross_A),hc.order = TRUE, type = "lower", lab = TRUE, digits = 2 
 - ACWI, S&P500, KOSPI 
 
 ```{r, echo=FALSE}
-library(TTR)
-prices_day_equity <- readRDS("equity_compact_daily.RDS")
+#library(TTR)
+#prices_day_equity <- readRDS("equity_compact_daily.RDS")
+#prices_day_equity <-data.frame(date=index(prices_day_equity), coredata(prices_day_equity))
 
 #sliderInput()
-start_date <- "2020-01-01"
-end_date <- "2020-05-27"
+#start_date <- "2017-01-01"
+#end_date <- "2017-12-31"
 
 # start_date랑 end_date를 input으로 받아야지
-  time_range <- paste(start_date, "::", end_date, sep = "")
+  #time_range <- paste(start_date, "::", end_date, sep = "")
   #print(time_range)
-  prices_day_equity <- prices_day_equity[time_range]
+  #prices_day_equity <- prices_day_equity[time_range]
   
-    rsi5 <- RSI(prices_day_equity$`MSCI ACWI`, n = 5)
-    rsi10 <- RSI(prices_day_equity$`MSCI ACWI`, n = 10)
-    rsi15 <- RSI(prices_day_equity$`MSCI ACWI`, n = 15)
-    rsi20 <- RSI(prices_day_equity$`MSCI ACWI`, n = 20)
-    par(mfrow = c(4, 1))
-    plot(rsi5, main = "RSI 5 days", xlab = "time", ylab = "RSI: 5days")
-    plot(rsi10, main = "RSI 10 days", xlab = "time", ylab = "RSI: 10days")
-    plot(rsi15, main = "RSI 15 days", xlab = "time", ylab = "RSI: 15days")
-    plot(rsi20, main = "RSI 20 days", xlab = "time", ylab = "RSI: 20days")
+    #rsi5 <- RSI(prices_day_equity$`MSCI ACWI`, n = 5)
+    #rsi10 <- RSI(prices_day_equity$`MSCI ACWI`, n = 10)
+    #rsi15 <- RSI(prices_day_equity$`MSCI ACWI`, n = 15)
+    #rsi20 <- RSI(prices_day_equity$`MSCI ACWI`, n = 20)
+    #par(mfrow = c(2, 2))
+    #plot(rsi5, main = "RSI 5 days", xlab = "time", ylab = "RSI: 5days")
+    #plot(rsi10, main = "RSI 10 days", xlab = "time", ylab = "RSI: 10days")
+    #plot(rsi15, main = "RSI 15 days", xlab = "time", ylab = "RSI: 15days")
+    #plot(rsi20, main = "RSI 20 days", xlab = "time", ylab = "RSI: 20days")
 ```
 
-## Example 001
+## Timeseries chart
 
-다음 예제
-
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE}
 library(shiny)
 library(readxl)
 library(dplyr)
 library(ggplot2)
 library(lubridate)
+library(PerformanceAnalytics)
+library(TTR)
+library(xts)
+library(ggcorrplot)
 
-equity_compact <- read_excel("ac_assets.xlsx", sheet = "equity_compact", col_names = FALSE, skip = 14, col_types = c("date", rep("numeric",8)))
+cross_A <- readRDS("cross_assets.RDS")
+cross_A <- to.monthly(cross_A,indexAt = "lastOf", OHLC = FALSE)
+cross_A_r <- Return.calculate(cross_A, method = "log") %>% na.omit
+cross_A <- data.frame(date=index(cross_A), coredata(cross_A))
+cross_A_r <- data.frame(date=index(cross_A_r), coredata(cross_A_r))
 
-# prices_day_equity <- readRDS("equity_compact_daily.RDS")
-
-equity_compact$Date <- as.Date(equity_compact$...1, format = "%d/%m/%Y")
 
 # Define UI for application
-ui <- fluidPage(theme = "bootstrap.css",
+ui <- fluidPage(
   
   # Application title
   #titlePanel("Stock Financials Trend"),
@@ -91,23 +93,36 @@ ui <- fluidPage(theme = "bootstrap.css",
     
      mainPanel(
       # Show a plot of the trend
-      plotOutput("plot01")
+      plotOutput("plot01"),
       
-    )
-    
-    )
+      plotOutput("plot02")
+      
+    )  
+  )
 )
 
 server <- function(input, output) {
   
   filtered_df <- reactive({
-    equity_compact %>%
-      filter(between(Date, input$days[1], input$days[2]))
+    cross_A %>%
+      filter(between(date, input$days[1], input$days[2]))
+  })
+  
+  filtered_cross_A_r <- reactive({
+    cross_A_r %>%
+      filter(between(date, input$days[1], input$days[2]))
   })
   
   output$plot01 <- renderPlot({
-    ggplot(filtered_df(), aes_string(x = "Date", y = "...3")) + geom_line() + geom_point() + ggtitle("ACWI plot")
-  })    
+    ggplot(filtered_df(), aes_string(x = "date", y = "MSCI.ACWI")) + geom_line() + geom_point() + ggtitle("ACWI plot")
+  })
+  
+  output$plot02 <- renderPlot({
+    ggplot(filtered_cross_A_r(), aes_string(x = "date", y = "MSCI.ACWI")) + geom_line() + geom_point() + ggtitle("ACWI plot")
+    #MAT <- cor(filtered_cross_A_r[,-1])
+  })
+  
+  
 }
 
 # Run the application 
