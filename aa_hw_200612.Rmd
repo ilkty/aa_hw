@@ -1,0 +1,354 @@
+---
+layout: page
+title: Asset Allocation Monitor
+subtitle: 자산배분 모니터링
+runtime: shiny
+output:
+  html_document: 
+    toc: yes
+    toc_float: true
+    highlight: tango
+    code_folding: show
+mainfont: NanumGothic
+---
+
+
+
+# 1. Cross Asset {#reactive-overview}
+    주식은 USD투자 가정하고 퍼포먼스, Correlation 등을 모니터링
+    Commodity는 선물로 투자
+
+
+> ### 
+>
+>
+>
+>
+>
+>
+
+``` {r shiny-dev-workflow, eval=FALSE}
+library(quantmod)
+library(shiny)
+library(ggcorrplot)
+library(PerformanceAnalytics)
+
+
+shinyApp(
+    ui <- fluidPage(                      
+       titlePanel("상관관계 테이블"),
+       mainPanel(
+         
+         plotOutput("plot01")
+         
+       )
+    ),
+                                          
+    server <- function(input, output) {
+      cross_A <- readRDS("cross_assets.RDS")
+      cross_A <- to.monthly(cross_A, OHLC = FALSE) %>% na.omit #indexAt = "lastOf"
+      cross_A <- Return.calculate(cross_A, method = "log") %>% na.omit
+      
+      output$plot01 <- renderPlot({
+          ggcorrplot(cor(cross_A),hc.order = TRUE, type = "upper", lab = TRUE, digits = 2)
+       })
+      
+      
+    },
+    options = list(height = 400)
+)
+```
+
+# 2. Global Equity - USD투자 {#reactive-development-process}
+
+1. **반응값(reactive value)** 함수에 반응값을 전달한다.
+1. **반응함수(reactive function)**가 생성한 객체가 응답한다.
+
+<div class = "row">
+  <div class = "col-md-6">
+**`app.R` 한 파일**
+``` {r shiny-dev-workflow, eval=FALSE}
+shinyApp(
+    ui <- fluidPage(                      
+       sliderInput(inputId = "num",       
+         label = "Choose a number",       
+         value = 25, min = 1, max = 100), 
+       plotOutput("hist")                 
+    ),
+                                          
+    server <- function(input, output) {   
+       output$hist <- renderPlot({        
+         hist(rnorm(input$num))           
+       })                                 
+    },
+    options = list(height = 400)
+)
+```
+  </div>
+  <div class = "col-md-6">
+**`ui.R`과 `server.R` 두 파일**
+```{r eval=FALSE}
+
+
+   input$num : 입력값               
+
+           O                        
+           |                        
+           |                        
+           |                        
+           |                        
+           |                            
+           V                       
+
+   output$hist <- renderPlot({      
+     hist(rnorm(input$num))         
+   })
+```
+  </div>
+</div>
+
+
+
+# 3. 출력표시 함수 - `render*()` {#shiny-process-render}
+
+상기 예제에서 `renderPlot()` 함수가 UI에서 정의된 출력을 담당한다. 
+출력하는 내용은 `renderPlot()` 함수 내 `{}`에서 정의한다.
+
+`renderPlot(  { hist(rnorm(input$num)) })`
+
+반응값(reactive value)이 변경되었을 때 **render*()** 함수에서 생성된 객체는 
+연관된 코드 블록 전체, `{ hist(rnorm(input$num)) }`, 를 다시 실행한다.
+
+|        함수       |          생성하는 것      |  
+| :---------------: |:-------------------------:|
+| renderDataTable() | 인터랙티브 테이블(table)  |
+| renderImage()     | 이미지(image)             |
+| renderPlot()      | 플롯 (plot)               |
+| renderPrint()     | 출력 결과 코드(code) 블록 |
+| renderTable()     | 테이블 (table)            |
+| renderText()      | 문자열                    |
+| renderUI()        | Shiny UI 요소(element)    |
+
+
+``` {r shiny-dev-workflow2}
+shinyApp(
+    ui <- fluidPage(                      
+       sliderInput(inputId = "num",
+         label = "Choose a number",      
+         value = 25, min = 1, max = 100),   
+       textInput(inputId = "title",      
+         label = "Write a title",     
+         value = "Histogram of Random Normal Values"),   
+       plotOutput("hist", height=300)
+    ),
+    
+    server <- function(input, output) {
+       output$hist <- renderPlot({
+          hist(rnorm(input$num), main = input$title)
+       })
+     },
+     options = list(height = 500)
+) 
+```
+
+# 4. 코드 모듈화(Modularize) - `reactive()`  {#shiny-process-reactive-data}
+
+`rnorm(input$num)` 동일한 데이터를 사용해서 히스토그램 및 기술통계량을 출력하는 동일한 코드가 
+모듈화 되기 전과 모듈화 된 후로 나뉘어 있다.
+좌측에 모듈화 되기 전에는 `rnorm(input$num)` 코드가 히스트그램과 기술통계량에 각기 뿌려진다.
+우측 모듈화 된 후에는 `reactive()`를 사용해서 반응객체(reactive object) 한곳에 집중되고, 
+히스토그램과 기술통계량 출력함수가 `data()`만 입력 데이터로 사용하여 깔끔하게 정리되어 있다. 
+`data()` 반응객체는 함수처럼 반응 표현식(reactive expression)을 호출하고, 
+`캐쉬(cashe)` 역할로 반응값을 저장하고 있으며 가장 최신 값을 반환한다.
+
+
+<div class = "row">
+  <div class = "col-md-6">
+**모듈화 되기 전**
+``` {r shiny-dev-module-before, eval=FALSE}
+shinyApp(
+    ui <- fluidPage(                       
+      sliderInput(inputId = "num",         
+        label = "Choose a number",         
+        value = 25, min = 1, max = 100),   
+      plotOutput("hist"),                  
+      verbatimTextOutput("stats")          
+    ),                                      
+                                           
+    server <- function(input, output) {    
+
+        
+        
+        
+        
+      output$hist <- renderPlot({          
+        hist(rnorm(input$num))             
+      })                                   
+      output$stats <- renderPrint({        
+        summary(rnorm(input$num))          
+      })                                   
+    },
+    options = list(height = 400)
+)
+```
+  </div>
+  <div class = "col-md-6">
+**모듈화 한 후**
+``` {r shiny-dev-workflow-module, eval=FALSE}
+shinyApp(
+   ui <- fluidPage(                    
+     sliderInput(inputId = "num",      
+       label = "Choose a number",      
+       value = 25, min = 1, max = 100),
+     plotOutput("hist"),               
+     verbatimTextOutput("stats")       
+   ),
+                                       
+   server <- function(input, output) { 
+                                       
+     data <- reactive({                
+       rnorm(input$num)                
+     })                                
+                                       
+     output$hist <- renderPlot({       
+       hist(data())                    
+     })                                
+     output$stats <- renderPrint({     
+       summary(data())                 
+     })                                
+   },
+   options = list(height = 400)
+)
+```
+  </div>
+</div>
+
+# 5. 반응 격리(isolate) - `isolate()` {#shiny-isolate}
+
+`isolate({ rnorm(input$num) })` 반응격리함수는 `input$num` 변경에도 격리되어 반응하지 않는다.
+결국 `isolate()` 함수는 비반응 객체(non-reactive object)를 생성해서, `isolate()` 함수를 사용해서
+반응값(reactive value)을 보통 R 값처럼 다룬다.
+
+`input$title`을 격리시켜서 **Write a title** 제목을 바뀌어도 이전과 달리 변경사항이 즉각 반영되지 않는다.
+
+``` {r shiny-dev-workflow-isolate}
+shinyApp(
+    
+    ui <- fluidPage(
+      sliderInput(inputId = "num", 
+        label = "Choose a number", 
+        value = 25, min = 1, max = 100),
+      textInput(inputId = "title", 
+        label = "Write a title",
+        value = "Histogram of Random Normal Values"),
+      plotOutput("hist")
+    ),
+    
+    server <- function(input, output) {
+      output$hist <- renderPlot({
+        hist(rnorm(input$num), main = isolate(input$title))
+      })
+    },
+    
+   options = list(height = 600) 
+)
+```
+
+# 6. 이벤트 반응 처리 - `observeEvent()` {#shiny-observeEvent}
+
+`observeEvent(input$clicks, { print(input$clicks) })`에서 `input$clicks` 클릭 이벤트가 발생할 때만  
+`print(input$clicks)` 출력이 실행된다.
+
+즉, `actionButton()` 이벤트가 발생할 때만, 다음 코드를 실행시킨다. 추가로, UI로 출력을 보내기 위해서 
+`verbatimTextOutput()`을 지정하여 `observeEvent()`에서 발생한 이벤트를 `actionButton()`을 눌렀을 경우 
+출력값을 뽑아내어 화면에 출력할 수 있도록 한다.
+
+
+``` {r shiny-dev-workflow-event}
+shinyApp(
+    
+    ui <- fluidPage(
+      sliderInput(inputId = "num", 
+        label = "Choose a number",
+        min = 1, max = 100, value = 25),
+      actionButton(inputId = "go", label = "Print Value"),
+      tags$br(),
+      verbatimTextOutput("print")
+    ),
+    
+    server <- function(input, output) {
+        value <- reactiveValues(data = NULL)
+        
+        observeEvent(input$go, {
+            value$input_value <-  paste0("슬라이더 입력값: ", input$num)
+        })
+        
+        output$print <- renderPrint({
+           value$input_value
+        })
+    },
+    options = list(height = 600) 
+)
+```
+
+# 7. 반응 지연 - `eventReactive()` {#shiny-event-delay}
+
+`data <- eventReactive(input$go,  { rnorm(input$num) })`에서 `input$num` 반응값 변경에 즉시 반응하는 것이 아니라,
+`eventReactive()` 반응 지연 함수가 실행될 때 비로소 `renderPlot()`에 값을 전달하여 출력결과를 실행한다.
+
+``` {r shiny-dev-workflow-reactive}
+shinyApp(
+
+    ui <- fluidPage(
+      sliderInput(inputId = "num", 
+        label = "Choose a number", 
+        value = 25, min = 1, max = 100),
+      actionButton(inputId = "go", label = "Update"),
+      plotOutput("hist")
+    ),
+    
+    server <- function(input, output) {
+        
+      data <- eventReactive(input$go, {
+        rnorm(input$num) 
+      })
+      
+      output$hist <- renderPlot({
+        hist(data())
+      })
+    },
+    options = list(height = 600) 
+)
+```
+
+# 8. 상태정보(state) 관리 - `reactiveValues()` {#shiny-state-mgmt}
+
+사용자가 입력값을 바꿀 때마다 반응입력값은 변한다. 따라서 상태입력값을 프로그램적으로 관리할 필요가 있다.
+`rv <- reactiveValues(data = rnorm(100))`에서 `reactiveValues()` 상태함수가 상태정보를 저장하여 관리한다.
+
+사용자가 버튼을 달리 클릭해도 동일한 출력결과가 된다.
+
+``` {r shiny-dev-workflow-state}
+shinyApp(
+
+    ui <- fluidPage(
+      actionButton(inputId = "norm", label = "Normal"),
+      actionButton(inputId = "unif", label = "Uniform"),
+      plotOutput("hist")
+    ),
+    
+    server <- function(input, output) {
+    
+      rv <- reactiveValues(data = rnorm(100))
+    
+      observeEvent(input$norm, { rv$data <- rnorm(100) })
+      observeEvent(input$unif, { rv$data <- runif(100) })
+    
+      output$hist <- renderPlot({ 
+        hist(rv$data) 
+      })
+    },
+    options = list(height = 600) 
+)
+```
+
