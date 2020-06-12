@@ -1,28 +1,72 @@
 ---
+layout: page
 title: "Asset_Allocation_HW_docs"
+subtitle: Shiny 반응형(reactive) 웹앱 개발
 author: "sseo64"
-date: '2020 6 4 '
-output: html_document
+date: '2020년 6월'
+html_document: 
+    toc: yes
+    toc_float: true
+    highlight: tango
+    code_folding: show
+
 runtime: shiny
+mainfont: NanumGothic
 ---
 
-
-## Cross Asset(USD투자가정)
+# 1. Cross Asset(USD투자가정) {#reactive-overview}
 ```{r, echo=FALSE, warning=FALSE}
 library(TTR)
 library(xts)
 library(PerformanceAnalytics)
 library(ggcorrplot)
 library(dplyr)
+library(shiny)
+library(readxl)
+library(ggplot2)
+library(lubridate)
+library(corrplot)
+library(ggcorrplot)
+
 
 cross_A <- readRDS("cross_assets.RDS")
 cross_A <- to.monthly(cross_A,indexAt = "lastOf", OHLC = FALSE)
 cross_A <- Return.calculate(cross_A, method = "log") %>% na.omit
 
-ggcorrplot(cor(cross_A),hc.order = TRUE, type = "upper", lab = TRUE, digits = 2)
-
-
-
+#titlePanel과 sidebarPanel, mainPanal
+shinyApp(
+  ui <- fluidPage(
+    
+    titlePanel("Correlation table w/ time window"),
+      
+    sidebarPanel(position = "left",
+    
+    dateRangeInput('days', 'Select a date range:',
+                     start = Sys.Date() - 365,
+                     end = Sys.Date(),
+                     max = Sys.Date()
+      ),
+    
+    mainPanel(
+      # Show a plot of the trend
+      plotOutput("plot01")
+      )
+    )
+    ),
+  
+  server <- function(input, output) {
+    filtered_df <- reactive({
+      cross_A %>%
+        filter(between(date, input$days[1], input$days[2]))
+      })
+    filtered_df <- as.data.frame(filtered_df)
+    
+    output$plot01 <- renderPlot({
+      ggcorrplot(filtered_df) + geom_line() + geom_point() + ggtitle("ACWI plot")
+    })
+  },
+  options = list(height = 500)
+)
 
 ```
 
@@ -32,42 +76,33 @@ ggcorrplot(cor(cross_A),hc.order = TRUE, type = "upper", lab = TRUE, digits = 2)
 - ACWI, S&P500, KOSPI 
 
 ```{r, echo=FALSE}
-#library(TTR)
-#prices_day_equity <- readRDS("equity_compact_daily.RDS")
+library(TTR)
+prices_day_equity <- readRDS("equity_compact_daily.RDS")
 #prices_day_equity <-data.frame(date=index(prices_day_equity), coredata(prices_day_equity))
 
 #sliderInput()
-#start_date <- "2017-01-01"
-#end_date <- "2017-12-31"
+start_date <- "2017-01-01"
+end_date <- "2017-12-31"
 
 # start_date랑 end_date를 input으로 받아야지
-  #time_range <- paste(start_date, "::", end_date, sep = "")
+  time_range <- paste(start_date, "::", end_date, sep = "")
   #print(time_range)
-  #prices_day_equity <- prices_day_equity[time_range]
+  prices_day_equity <- prices_day_equity[time_range]
   
-    #rsi5 <- RSI(prices_day_equity$`MSCI ACWI`, n = 5)
-    #rsi10 <- RSI(prices_day_equity$`MSCI ACWI`, n = 10)
-    #rsi15 <- RSI(prices_day_equity$`MSCI ACWI`, n = 15)
-    #rsi20 <- RSI(prices_day_equity$`MSCI ACWI`, n = 20)
-    #par(mfrow = c(2, 2))
-    #plot(rsi5, main = "RSI 5 days", xlab = "time", ylab = "RSI: 5days")
-    #plot(rsi10, main = "RSI 10 days", xlab = "time", ylab = "RSI: 10days")
-    #plot(rsi15, main = "RSI 15 days", xlab = "time", ylab = "RSI: 15days")
-    #plot(rsi20, main = "RSI 20 days", xlab = "time", ylab = "RSI: 20days")
+    rsi5 <- RSI(prices_day_equity$`MSCI ACWI`, n = 5)
+    rsi10 <- RSI(prices_day_equity$`MSCI ACWI`, n = 10)
+    rsi15 <- RSI(prices_day_equity$`MSCI ACWI`, n = 15)
+    rsi20 <- RSI(prices_day_equity$`MSCI ACWI`, n = 20)
+    par(mfrow = c(2, 2))
+    ggplot(rsi5, main = "RSI 5 days", xlab = "time", ylab = "RSI: 5days")
+    ggplot(rsi10, main = "RSI 10 days", xlab = "time", ylab = "RSI: 10days")
+    ggplot(rsi15, main = "RSI 15 days", xlab = "time", ylab = "RSI: 15days")
+    ggplot(rsi20, main = "RSI 20 days", xlab = "time", ylab = "RSI: 20days")
 ```
 
 ## Timeseries chart
 
 ```{r, echo=FALSE, warning=FALSE}
-library(shiny)
-library(readxl)
-library(dplyr)
-library(ggplot2)
-library(lubridate)
-library(PerformanceAnalytics)
-library(TTR)
-library(xts)
-library(ggcorrplot)
 
 cross_A <- readRDS("cross_assets.RDS")
 cross_A <- to.monthly(cross_A,indexAt = "lastOf", OHLC = FALSE)
@@ -91,13 +126,11 @@ ui <- fluidPage(
                 end = Sys.Date(), 
                 max = Sys.Date())),
     
-     mainPanel(
+    mainPanel(
       # Show a plot of the trend
       plotOutput("plot01"),
-      
       plotOutput("plot02")
-      
-    )  
+    )
   )
 )
 
@@ -119,7 +152,7 @@ server <- function(input, output) {
   
   output$plot02 <- renderPlot({
     ggplot(filtered_cross_A_r(), aes_string(x = "date", y = "MSCI.ACWI")) + geom_line() + geom_point() + ggtitle("ACWI plot")
-    #MAT <- cor(filtered_cross_A_r[,-1])
+    #ggcorrplot(filtered_cross_A_r[,-1])
   })
   
   
