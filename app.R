@@ -9,6 +9,7 @@ require(ggplot2)
 require(shinydashboard)
 require(PerformanceAnalytics)
 require(corrplot)
+require(ggcorrplot)
 require(TTR)
 require(rsconnect)
 require(curl)
@@ -32,8 +33,8 @@ ui <- dashboardPage(
       tabItem(tabName = "Cross_assets",
               h1("자산 전체 모니터링"),
               h2("연도설정 추가"),
-              p("최근 1개월은 급락이후 급등 장세를 연출했으나 지난 1주일은 변동성 확대기간을 거침
-> ###### 향후 변동성 확대는 불가필 할 것으로 보이나 지난 3월 경험했던 깊이와 넓이는 아닐 것으로 판단"),
+              p("최근 1개월은 급락이후 급등 장세를 연출했으나 지난 1주일은 변동성 확대기간을 거침"),
+              
               
               fluidPage(
                 
@@ -118,8 +119,11 @@ ui <- dashboardPage(
                 ),
                 box(
                   title = "10 Check Performance",
-                  plotOutput("plot10", height = 500, width = 700),
-                  plotOutput("plot11", height = 500, width = 700)
+                  plotOutput("plot10", height = 500, width = 700)
+                ),
+                box(
+                  title = "Performance Table",
+                  dataTableOutput('table11')
                 )
               )
         
@@ -145,6 +149,7 @@ server <- function(input, output) {
   
   cross_assets <- readRDS("cross_assets.RDS") %>% na.omit
   cross_assets_m <- to.monthly(cross_assets, indexAt = "lastOf", OHLC = FALSE)
+  df_cross_assets <- data.frame(date=index(cross_assets), coredata(cross_assets))
   
   
   rets_eq_2010_2019 <- rets_month_equity['2010-01-01/2019-12-31']
@@ -175,8 +180,10 @@ server <- function(input, output) {
   
   output$plot01 <- renderPlot({
     
-    Year <- as.factor(format(index(cross_assets_m_2015_2019),'%Y'))
-    chart.Correlation(cross_assets_m_2015_2019,bg=seq(1:12)[Year],pch=21)
+    #Year <- as.factor(format(index(cross_assets_m_2015_2019),'%Y'))
+    #chart.Correlation(cross_assets_m_2015_2019,bg=seq(1:12)[Year],pch=21)
+    #ggcorrplot(cor(cross_assets_m))
+    ggcorrplot(cor(cross_assets_m_2015_2019),hc.order = TRUE, type = "upper", lab = TRUE, digits = 2)
     
   })
 
@@ -286,8 +293,9 @@ server <- function(input, output) {
   
   output$plot08 <- renderPlot({
     
-    Year <- as.factor(format(index(rets_bond_2015_2019),'%Y'))
-    chart.Correlation(rets_bond_2015_2019,bg=seq(1:8)[Year],pch=21)
+    #Year <- as.factor(format(index(rets_bond_2015_2019),'%Y'))
+    #chart.Correlation(rets_bond_2015_2019,bg=seq(1:8)[Year],pch=21)
+    ggcorrplot(cor(rets_bond_2015_2019),hc.order = TRUE, type = "upper", lab = TRUE, digits = 2)
     
   })
   
@@ -301,15 +309,17 @@ server <- function(input, output) {
     output$plot10 <- renderPlot({
       
       filtered_df <- reactive({
-        cross_A %>%
+        df_cross_assets %>%
           filter(between(date, input$days[1], input$days[2]))
       })
-      
       #ggplot(filtered_df(), aes_string(x = "date", y = c("MSCI.ACWI", "GOLD"))) + geom_line() + geom_point() + ggtitle("ACWI plot")
-      plot(melt(filtered_df()[,-1]))
-      
-      
+      plot(melt(filtered_df()))
     })
+    
+    output$table11 <- renderTable({
+      df_cross_assets %>%
+          filter(between(date, input$days[1], input$days[2]))
+      })
 
 }
 
