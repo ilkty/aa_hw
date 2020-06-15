@@ -16,18 +16,17 @@ mainfont: NanumGothic
 
 # 1. Cross Asset {#reactive-overview}
     주식은 USD투자 가정하고 퍼포먼스, Correlation 등을 모니터링
-    Commodity는 선물로 투자
+    Commodity는 선물로 투자 가정
 
 
-> ### 
->
->
+> ##### 최근 1개월은 급락이후 급등 장세를 연출했으나 지난 1주일은 변동성 확대기간을 거침
+> ###### 향후 변동성 확대는 불가필 할 것으로 보이나 지난 3월 경험했던 깊이와 넓이는 아닐 것으로 판단
 >
 >
 >
 >
 
-``` {r shiny-dev-workflow, eval=FALSE}
+``` {r shiny-dev-workflow01, eval=FALSE}
 library(quantmod)
 library(shiny)
 library(ggcorrplot)
@@ -39,20 +38,23 @@ shinyApp(
        titlePanel("상관관계 테이블"),
        mainPanel(
          
-         plotOutput("plot01")
+         plotOutput("plot01"),
+         plotOutput("plot02")
          
        )
     ),
                                           
     server <- function(input, output) {
       cross_A <- readRDS("cross_assets.RDS")
-      cross_A <- to.monthly(cross_A, OHLC = FALSE) %>% na.omit #indexAt = "lastOf"
-      cross_A <- Return.calculate(cross_A, method = "log") %>% na.omit
+      cross_A_m <- to.monthly(as.xts(cross_A), OHLC = FALSE) %>% na.omit #indexAt = "lastOf"
+      cross_A_m_r <- Return.calculate(cross_A_m, method = "log") %>% na.omit
       
       output$plot01 <- renderPlot({
-          ggcorrplot(cor(cross_A),hc.order = TRUE, type = "upper", lab = TRUE, digits = 2)
+        ggcorrplot(cor(cross_A_m_r),hc.order = TRUE, type = "upper", lab = TRUE, digits = 2)
        })
-      
+      output$plot02 <- renderPlot({
+        plot(cross_A[])
+      })
       
     },
     options = list(height = 400)
@@ -67,7 +69,7 @@ shinyApp(
 <div class = "row">
   <div class = "col-md-6">
 **`app.R` 한 파일**
-``` {r shiny-dev-workflow, eval=FALSE}
+``` {r shiny-dev-workflow02, eval=FALSE}
 shinyApp(
     ui <- fluidPage(                      
        sliderInput(inputId = "num",       

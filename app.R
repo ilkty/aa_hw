@@ -21,7 +21,8 @@ ui <- dashboardPage(
       menuItem("Cross_assets", tabName = "Cross_assets", icon = icon("amazon")),
       menuItem("Equities", tabName = "Equities", icon = icon("th")),
       menuItem("Bonds", tabName = "Bonds", icon = icon("th")),
-      menuItem("Trend", tabName = "Trend", icon = icon("th"))
+      menuItem("Trend", tabName = "Trend", icon = icon("th")),
+      menuItem("Time_Series", tabName = "Time_Series", icon = icon("th"))
     )
   ),
   
@@ -31,7 +32,8 @@ ui <- dashboardPage(
       tabItem(tabName = "Cross_assets",
               h1("자산 전체 모니터링"),
               h2("연도설정 추가"),
-              p("자산별 기간설정 long term을 fundamental로 두고 short term은 trend를 모니터링"),
+              p("최근 1개월은 급락이후 급등 장세를 연출했으나 지난 1주일은 변동성 확대기간을 거침
+> ###### 향후 변동성 확대는 불가필 할 것으로 보이나 지난 3월 경험했던 깊이와 넓이는 아닐 것으로 판단"),
               
               fluidPage(
                 
@@ -102,6 +104,25 @@ ui <- dashboardPage(
                   plotOutput("plot09", height = 500, width = 700)
                 )
               )
+      ),
+      
+      tabItem(tabName = "Time_Series",
+              h1("check charts"),
+              fluidRow(
+                sidebarPanel(
+                                dateRangeInput('days', 'Select a date range:', 
+                                               start = Sys.Date() - 365,
+                                               end = Sys.Date(), 
+                                               max = Sys.Date()
+                                               )
+                ),
+                box(
+                  title = "10 Check Performance",
+                  plotOutput("plot10", height = 500, width = 700),
+                  plotOutput("plot11", height = 500, width = 700)
+                )
+              )
+        
       )
       
     )
@@ -276,6 +297,19 @@ server <- function(input, output) {
     plot(rsi, main = "RSI 5 days", xlab = "time", ylab = "RSI: 5days")
     
   })
+    
+    output$plot10 <- renderPlot({
+      
+      filtered_df <- reactive({
+        cross_A %>%
+          filter(between(date, input$days[1], input$days[2]))
+      })
+      
+      #ggplot(filtered_df(), aes_string(x = "date", y = c("MSCI.ACWI", "GOLD"))) + geom_line() + geom_point() + ggtitle("ACWI plot")
+      plot(melt(filtered_df()[,-1]))
+      
+      
+    })
 
 }
 

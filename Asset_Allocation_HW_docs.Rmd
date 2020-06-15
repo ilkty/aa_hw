@@ -81,23 +81,23 @@ prices_day_equity <- readRDS("equity_compact_daily.RDS")
 #prices_day_equity <-data.frame(date=index(prices_day_equity), coredata(prices_day_equity))
 
 #sliderInput()
-start_date <- "2017-01-01"
-end_date <- "2017-12-31"
+start_date <- Sys.Date()-365
+end_date <- Sys.Date()
 
 # start_date랑 end_date를 input으로 받아야지
   time_range <- paste(start_date, "::", end_date, sep = "")
   #print(time_range)
   prices_day_equity <- prices_day_equity[time_range]
   
-    rsi5 <- RSI(prices_day_equity$`MSCI ACWI`, n = 5)
-    rsi10 <- RSI(prices_day_equity$`MSCI ACWI`, n = 10)
-    rsi15 <- RSI(prices_day_equity$`MSCI ACWI`, n = 15)
-    rsi20 <- RSI(prices_day_equity$`MSCI ACWI`, n = 20)
+    rsi_acwi <- RSI(prices_day_equity$`MSCI ACWI`, n = 15)
+    rsi_dm <- RSI(prices_day_equity$`MSCI WORLD`, n = 15)
+    rsi_kor <- RSI(prices_day_equity$`Korea USD`, n = 15)
+    rsi_china <- RSI(prices_day_equity$`MSCI China USD`, n = 15)
     par(mfrow = c(2, 2))
-    ggplot(rsi5, main = "RSI 5 days", xlab = "time", ylab = "RSI: 5days")
-    ggplot(rsi10, main = "RSI 10 days", xlab = "time", ylab = "RSI: 10days")
-    ggplot(rsi15, main = "RSI 15 days", xlab = "time", ylab = "RSI: 15days")
-    ggplot(rsi20, main = "RSI 20 days", xlab = "time", ylab = "RSI: 20days")
+    plot(rsi_acwi, main = "RSI ACWI", xlab = "time", ylab = "RSI: 15days")
+    plot(rsi_dm, main = "RSI DM", xlab = "time", ylab = "RSI: 15days")
+    plot(rsi_kor, main = "RSI KOREA", xlab = "time", ylab = "RSI: 15days")
+    plot(rsi_china, main = "RSI CHINA", xlab = "time", ylab = "RSI: 15days")
 ```
 
 ## Timeseries chart
